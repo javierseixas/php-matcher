@@ -8,7 +8,8 @@ class JsonMatcher extends Matcher
 {
     const TRANSFORM_QUOTATION_PATTERN = '/([^"])@([a-zA-Z0-9\.]+)@([^"])/';
     const TRANSFORM_QUOTATION_REPLACEMENT = '$1"@$2@"$3';
-    const IGNORE_EXTRA_KEYS_PATTERN = "@ignore_extra_keys@";
+    const IGNORE_EXTRA_KEYS_PATTERN = "/\|([a-z_,]+)\|/";
+    const STRICTNESSERS_EXTRACTION_PATTERN = "/\|([a-z_]+)(,[a-z_]+)\|*/";
 
     /**
      * @var
@@ -31,7 +32,7 @@ class JsonMatcher extends Matcher
      */
     public function match($value, $pattern)
     {
-        $nonStrictMatching = $this->isNonStrict($pattern);
+        $strictnessers = $this->isNonStrict($pattern);
 
         $pattern = $this->removeNonStrictPattern($pattern);
 
@@ -40,7 +41,7 @@ class JsonMatcher extends Matcher
         }
 
         $pattern = $this->transformPattern($pattern);
-        $match = $this->doMatch(json_decode($value, true), json_decode($pattern, true), $nonStrictMatching);
+        $match = $this->doMatch(json_decode($value, true), json_decode($pattern, true), $strictnessers);
         if (!$match) {
             $this->error = $this->matcher->getError();
             return false;
@@ -87,14 +88,28 @@ class JsonMatcher extends Matcher
      * @param $matches
      * @return bool
      */
-    private function doMatch($value, $pattern, $nonStrictMatching)
+    private function doMatch($value, $pattern, $strictnessers)
     {
-        if ($nonStrictMatching) {
+        if (count($strictnessers) > 0) {
             if (is_null($this->nonStrictMatcher)) {
                 throw new Exception(sprintf("There is not any NonStrictMatcher available. Please include it during the constuction of the class %s", __FILE__));
             }
 
-            return $this->nonStrictMatcher->match($value, $pattern);
+            foreach ($strictnessers as $strictnesser) {
+                switch ($strictnesser) {
+                    case 'case_insensitive':
+                        array_walk_recursive($value, function(&$item, $key) {
+                            $item = strtolower($item);
+                        });
+                        break;
+                    default:
+
+                }
+            }
+
+            if (in_array('ignore_extra_keys', $strictnessers)) {
+                return $this->nonStrictMatcher->match($value, $pattern);
+            }
         }
 
         return $this->matcher->match($value, $pattern);
@@ -106,7 +121,9 @@ class JsonMatcher extends Matcher
      */
     protected function isNonStrict($pattern)
     {
-        return preg_match(self::IGNORE_EXTRA_KEYS_PATTERN, $pattern);
+        preg_match(self::IGNORE_EXTRA_KEYS_PATTERN, $pattern, $matches);
+
+        return count($matches) > 1 ? explode(",", $matches[1]) : array();
     }
 
     /**
@@ -115,7 +132,7 @@ class JsonMatcher extends Matcher
      */
     protected function removeNonStrictPattern($pattern)
     {
-        return str_replace(self::IGNORE_EXTRA_KEYS_PATTERN, "", $pattern);
+        return preg_replace(self::IGNORE_EXTRA_KEYS_PATTERN, "", $pattern);
     }
 
 }

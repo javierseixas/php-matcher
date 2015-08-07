@@ -124,6 +124,21 @@ class JsonMatcherTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue($this->matcher->match($value, $pattern), $this->matcher->getError());
     }
 
+    public function test_non_strict_json_with_multi_modifiers_positive_matching()
+    {
+//        $value = '{"key": "value", "foo": "Bar"}';
+//        $pattern = '|ignore_extra_keys,case_insensitive|{"foo": "bar"}';
+//
+//        // TODO check strtolower in a nested array
+//
+//        $this->assertTrue($this->matcher->match($value, $pattern), $this->matcher->getError());
+
+        $value = '{"key": "value", "foo": "Bar", "baz": {"paz": "KUZ"}}';
+        $pattern = '|ignore_extra_keys,case_insensitive|{"foo": "bar", "baz": {"paz": "kuz"}}';
+
+        $this->assertTrue($this->matcher->match($value, $pattern), $this->matcher->getError());
+    }
+
     /**
      * @dataProvider nonStrictNegativeMatches
      */
@@ -256,15 +271,15 @@ class JsonMatcherTest extends \PHPUnit_Framework_TestCase
         return array(
             array(
                 '{"key": "value", "foo": "bar"}',
-                '{"foo": "bar"}@ignore_extra_keys@',
+                '|ignore_extra_keys|{"foo": "bar"}',
             ),
             array(
                 '{"key": "value", "foo": "bar", "roles": ["ADMIN", "USER"], "more": {"buz": "guz", "paz": "kaz"}}',
-                '{"foo": "bar", "more": {"buz": "guz"}}@ignore_extra_keys@',
+                '|ignore_extra_keys|{"foo": "bar", "more": {"buz": "guz"}}',
             ),
             array(
                 '{"key": "value", "foo": "bar", "roles": ["ADMIN", "USER"], "more": {"buz": "guz", "paz": "kaz"}}',
-                '{"foo": "bar", "more": {"buz": @string@}}@ignore_extra_keys@',
+                '|ignore_extra_keys|{"foo": "bar", "more": {"buz": @string@}}',
             ),
         );
     }
@@ -274,7 +289,7 @@ class JsonMatcherTest extends \PHPUnit_Framework_TestCase
         return array(
             array(
                 '{"key": "value", "foo": "bar"}',
-                '{"important_key": "bar"}@ignore_extra_keys@',
+                '|ignore_extra_keys|{"important_key": "bar"}',
             ),
         );
     }
